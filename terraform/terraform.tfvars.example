@@ -1,0 +1,21 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+
+# --- WinRM connection to the Windows Hyper-V host ---
+# Use the host's LAN IP (the 192.168.1.x address), reachable from WSL2.
+winrm_host     = "192.168.1.21"
+winrm_user     = "Administrator"
+winrm_password = "CHANGE-ME"
+# winrm_port   = 5985          # 5985 HTTP (default) / 5986 HTTPS
+# winrm_https  = false
+# winrm_use_ntlm = true
+
+# --- Paths (defaults usually fine; C:\talos == /mnt/c/talos) ---
+# iso_dir_host = "C:\\talos"
+# iso_dir_wsl  = "/mnt/c/talos"
+# vhd_dir      = "C:\\Hyper-V\\jeen"
+
+# --- Isolated cluster network (defaults match host-network-setup.ps1) ---
+# switch_name       = "jeen-internal"
+# gateway           = "10.66.6.1"
+# nameservers       = ["1.1.1.1", "8.8.8.8"]
+# control_plane_vip = "10.66.6.10"

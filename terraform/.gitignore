@@ -1,0 +1,12 @@
+# Secrets and state
+*.tfvars
+!*.tfvars.example
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+
+# Generated cluster credentials
+kubeconfig
+talosconfig
+*.kubeconfig

@@ -1,0 +1,4 @@
+- [Infrastructure](infrastructure.md) — Talos VMs on Hyper-V, managed from WSL2 over WinRM
+- [Deployment approach](deployment-approach.md) — everything deployed via Terraform (hyperv + talos providers)
+- [Cluster topology](cluster-topology.md) — node inventory, IPs, sizing, VIP, network layout
+- [Terraform stack](terraform-stack.md) — TF layout, provider versions, schema gotchas, deploy flow
