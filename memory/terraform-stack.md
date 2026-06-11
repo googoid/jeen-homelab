@@ -9,13 +9,18 @@ Terraform in `terraform/`. Providers (pinned in `.terraform.lock.hcl`):
 - `siderolabs/talos` **v0.11.0** — schematics, machine config, apply, bootstrap, kubeconfig.
 - `hashicorp/helm` **~> 2.17** — installs Cilium (`cilium.tf`), authenticated from
   `talos_cluster_kubeconfig.this.kubernetes_client_configuration` (no kubeconfig file).
+- `fluxcd/flux` **~> 1.8** + `integrations/github` **~> 6.1** + `hashicorp/tls`
+  **~> 4.0** + `hashicorp/kubernetes` **~> 2.30** — Flux GitOps bootstrap
+  (`flux.tf`) + sops-age Secret (`sops.tf`). See [[gitops-flux]].
 - `hashicorp/null` (ISO download + VM lifecycle), `hashicorp/time` (reboot delay).
 - **No VM provider:** VirtualBox VMs are created by driving `VBoxManage` via
   `null_resource` + `local-exec` (`vms.tf`). The old `taliesins/hyperv` provider
   and all WinRM config were removed (Milestone 3).
 
-Files: versions/providers/variables/locals/network/isos/vms/talos/cilium/outputs.tf +
+Files: versions/providers/variables/locals/network/isos/vms/talos/cilium/flux/sops/outputs.tf +
 `scripts/host-network-setup.ps1`, `terraform.tfvars.example`, `.gitignore`, `README.md`.
+Flux GitOps manifests live OUTSIDE terraform/ (monorepo): `clusters/jeen/`,
+`infrastructure/`, `apps/`, root `.sops.yaml` — see [[gitops-flux]].
 
 **CNI = Cilium (Milestone 4):** controlplane `config_patches` (talos.tf) set
 `cluster.network.cni.name=none` + `cluster.proxy.disabled=true`; `cilium.tf`

@@ -2,3 +2,4 @@
 - [Deployment approach](deployment-approach.md) — VMs via VBoxManage local-exec, cluster via talos provider, CNI via helm
 - [Cluster topology](cluster-topology.md) — node inventory, IPs, sizing, VIP, network layout
 - [Terraform stack](terraform-stack.md) — TF layout, provider versions, VBoxManage gotchas, Cilium CNI, deploy flow
+- [GitOps / Flux](gitops-flux.md) — Flux via Terraform, monorepo layout, Cilium adoption, SOPS/age

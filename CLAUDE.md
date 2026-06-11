@@ -15,8 +15,11 @@ Make sure to use as little tokens as possible. I'm on a very low budget :)
 
 Use short commit messages. Never use Co-Authored or anything like that.
 
+Always use best-practices when doing anything.
+
 ## Memory files (see memory/MEMORY.md for the full index)
 - memory/infrastructure.md — VirtualBox host, Talos, WSL2 control machine, VBoxManage (no WinRM)
 - memory/deployment-approach.md — VMs via VBoxManage local-exec, cluster via talos provider, CNI via helm
 - memory/cluster-topology.md — node inventory, IPs, sizing, VIP, network layout
 - memory/terraform-stack.md — TF layout, provider versions, VBoxManage gotchas, Cilium CNI, deploy flow
+- memory/gitops-flux.md — Flux via Terraform, monorepo layout, Cilium adoption, SOPS/age

@@ -1,0 +1,9 @@
+# SOPS creation rules. Files matching *.sops.yaml are encrypted with the age
+# recipient below; only the data/stringData values are encrypted (keys stay
+# readable). Replace the placeholder with your age PUBLIC key
+# (`age-keygen -y ~/.config/sops/age/jeen.agekey`). The PRIVATE key lives only on
+# the host + as the in-cluster sops-age Secret — never commit it.
+creation_rules:
+  - path_regex: .*\.sops\.ya?ml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1rqa3qykqnd3e7w3r6hdzvk334ze995d5c6976jf7303kf44yteuq2q6e4d

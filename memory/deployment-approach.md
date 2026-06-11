@@ -16,6 +16,8 @@ in Milestone 3). Cluster layer = the official `siderolabs/talos` provider
 `talos_machine_configuration_apply`, `talos_machine_bootstrap`,
 `talos_cluster_kubeconfig`) to generate configs, apply them, bootstrap etcd, and
 fetch kubeconfig. CNI layer = **Cilium via the `helm` provider** (`cilium.tf`),
-authenticated from the talos kubeconfig output (no file on disk). Prefer
-Terraform resources over imperative commands. See [[infrastructure]],
-[[terraform-stack]].
+authenticated from the talos kubeconfig output (no file on disk). GitOps layer =
+**Flux CD bootstrapped via the `fluxcd/flux` Terraform provider**
+(`flux_bootstrap_git`), syncing this monorepo from GitHub; Cilium is then adopted
+into Flux as a HelmRelease (see [[gitops-flux]]). Prefer Terraform resources over
+imperative commands. See [[infrastructure]], [[terraform-stack]].

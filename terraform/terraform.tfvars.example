@@ -15,3 +15,12 @@
 # gateway           = "10.66.6.1"
 # nameservers       = ["1.1.1.1", "8.8.8.8"]
 # control_plane_vip = "10.66.6.10"
+
+# --- Flux / GitOps (REQUIRED) ---
+github_owner = "your-github-user"
+github_token = "ghp_xxx" # PAT with repo scope; keep this file gitignored
+# github_repository = "jeen"
+# flux_branch       = "main"
+# flux_path         = "clusters/jeen"
+# flux_version      = "v2.8.5"
+# sops_age_key_file = "~/.config/sops/age/jeen.agekey"  # age PRIVATE key (never committed)

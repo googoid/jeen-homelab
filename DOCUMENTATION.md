@@ -110,3 +110,41 @@ so it was a clean rewrite.
   `KubeProxyReplacement: True`. On a cold run, if the helm provider errors on an
   unknown kubeconfig, `terraform apply -target=talos_cluster_kubeconfig.this`
   then re-apply.
+
+---
+
+## Milestone 5 — Flux GitOps (Terraform bootstrap, Cilium adopted into Flux, SOPS/age) (2026-06-11)
+
+**Decisions**
+- Adopt **Flux CD** for GitOps: cluster state declared in Git, continuously
+  reconciled. Git host = **GitHub**; **monorepo** (Flux manifests alongside
+  `terraform/`); install via the Terraform **`fluxcd/flux` provider**.
+- **Move Cilium into Flux** (manage as a `HelmRelease`) and set up **SOPS + age**
+  for encrypted secrets in Git from the start.
+
+**Cilium chicken-and-egg → adoption**
+- Flux pods need a CNI to schedule, so Terraform still installs Cilium once via
+  `helm_release.cilium`. Flux then reconciles a Cilium `HelmRelease` with matching
+  `releaseName`/namespace/version/values → helm-controller **adopts** the existing
+  release (no reinstall). Handoff: delete the TF block + `terraform state rm
+  helm_release.cilium` (never `destroy`). Flux becomes sole owner.
+
+**Delivered**
+- TF: `flux.tf` (ed25519 deploy key via `tls_private_key` + `github_repository_deploy_key`
+  read/write, `flux_bootstrap_git` path `clusters/jeen`), `sops.tf` (flux-system ns
+  + `sops-age` Secret from the host age key), `providers.tf`/`versions.tf` add
+  `flux`/`github`/`kubernetes`/`tls` providers, `variables.tf` adds github_* +
+  flux_* + `sops_age_key_file`.
+- Repo: `clusters/jeen/{infrastructure,apps}.yaml` Kustomizations (SOPS decryption,
+  dependsOn chain), `infrastructure/controllers/cilium/*` (HelmRepository +
+  HelmRelease mirroring `cilium.tf`), `infrastructure/configs` + `apps/jeen`
+  placeholders, root `.sops.yaml`.
+
+**Status / next step**
+- Prereqs before apply: create the GitHub repo + remote, `age-keygen` and put the
+  public key in `.sops.yaml`, set `github_owner`/`github_token` in tfvars, commit +
+  push the Flux manifests. Apply: Talos → Cilium (TF) → deploy key → sops-age
+  Secret → `flux_bootstrap_git` → Flux reconciles + adopts Cilium. Then do the TF
+  `state rm` handoff. Verify: `flux check`, `flux get kustomizations -A` Ready,
+  nodes Ready, `flux get hr -n kube-system cilium` Ready (no Cilium pod restart),
+  SOPS round-trip decrypts a test secret. Same cold-run `-target` caveat as helm.

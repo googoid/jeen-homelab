@@ -1,0 +1,61 @@
+# Cilium, managed by Flux. releaseName + namespace + chart version + values MUST
+# match the Terraform helm_release (terraform/cilium.tf) at adoption time so
+# helm-controller adopts the existing release (no reinstall, no pod churn).
+# After Flux owns it (`flux get hr -n kube-system cilium` Ready), remove the TF
+# block and `terraform state rm helm_release.cilium`. Bump Cilium only via Git.
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cilium
+  namespace: kube-system
+spec:
+  releaseName: cilium
+  interval: 30m
+  chart:
+    spec:
+      chart: cilium
+      version: "1.19.4"
+      sourceRef:
+        kind: HelmRepository
+        name: cilium
+        namespace: kube-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    ipam:
+      mode: kubernetes
+    kubeProxyReplacement: true
+    k8sServiceHost: localhost
+    k8sServicePort: 7445
+    cgroup:
+      autoMount:
+        enabled: false
+      hostRoot: /sys/fs/cgroup
+    securityContext:
+      capabilities:
+        ciliumAgent:
+          - CHOWN
+          - KILL
+          - NET_ADMIN
+          - NET_RAW
+          - IPC_LOCK
+          - SYS_ADMIN
+          - SYS_RESOURCE
+          - DAC_OVERRIDE
+          - FOWNER
+          - SETGID
+          - SETUID
+        cleanCiliumState:
+          - NET_ADMIN
+          - SYS_ADMIN
+          - SYS_RESOURCE
+    hubble:
+      relay:
+        enabled: true
+      ui:
+        enabled: true

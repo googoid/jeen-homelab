@@ -4,3 +4,7 @@
 # OS / editor noise
 .DS_Store
 *.swp
+
+# Secrets — never commit the SOPS/age private key (only the public key in .sops.yaml)
+*.agekey
+age*.txt

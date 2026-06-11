@@ -110,3 +110,50 @@ variable "cilium_namespace" {
   type        = string
   default     = "kube-system"
 }
+
+# ---------------------------------------------------------------------------
+# Flux CD / GitOps (see flux.tf)
+# Flux is bootstrapped into the cluster via the fluxcd/flux provider and synced
+# from a GitHub repo. A deploy key is generated and registered on the repo, and
+# the SOPS/age private key is applied as a Secret so Flux can decrypt secrets.
+# ---------------------------------------------------------------------------
+variable "github_owner" {
+  description = "GitHub user/org that owns the GitOps repo."
+  type        = string
+}
+
+variable "github_token" {
+  description = "GitHub PAT (repo scope) used to register the Flux deploy key."
+  type        = string
+  sensitive   = true
+}
+
+variable "github_repository" {
+  description = "Name of the GitHub repo Flux syncs from (this monorepo)."
+  type        = string
+  default     = "jeen"
+}
+
+variable "flux_branch" {
+  description = "Git branch Flux reconciles from."
+  type        = string
+  default     = "main"
+}
+
+variable "flux_path" {
+  description = "Path in the repo Flux bootstraps/reconciles (the cluster's flux-system lives here)."
+  type        = string
+  default     = "clusters/jeen"
+}
+
+variable "flux_version" {
+  description = "Flux version to install (pins gotk-components)."
+  type        = string
+  default     = "v2.8.5"
+}
+
+variable "sops_age_key_file" {
+  description = "Host path to the age PRIVATE key, applied as the sops-age Secret so Flux can decrypt. Never committed."
+  type        = string
+  default     = "~/.config/sops/age/jeen.agekey"
+}

@@ -24,3 +24,8 @@ output "iso_urls" {
   description = "Per-node Image Factory ISO URLs (staged to the host by Terraform)."
   value       = { for k, v in data.talos_image_factory_urls.node : k => v.urls.iso }
 }
+
+output "flux_deploy_public_key" {
+  description = "Public deploy key registered on the GitHub repo for Flux (informational)."
+  value       = tls_private_key.flux.public_key_openssh
+}

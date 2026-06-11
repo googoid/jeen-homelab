@@ -69,8 +69,8 @@ resource "null_resource" "noboot" {
   for_each = local.nodes
 
   triggers = {
-    vbm      = var.vboxmanage
-    name     = each.key
+    vbm  = var.vboxmanage
+    name = each.key
   }
 
   provisioner "local-exec" {

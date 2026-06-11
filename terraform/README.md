@@ -63,6 +63,23 @@ ping -c1 10.66.6.1
 If this fails, mirrored mode is not exposing the host-only adapter to WSL2 and the
 Talos provider won't be able to configure the nodes — resolve this first.
 
+### 4. GitOps prerequisites (Flux + SOPS)
+Flux syncs the cluster from this repo on GitHub, so before `apply`:
+```bash
+# a. Create a GitHub repo (e.g. jeen) and wire the remote:
+git remote add origin git@github.com:<owner>/jeen.git
+
+# b. Generate the SOPS age key on the host (private key — never committed):
+age-keygen -o ~/.config/sops/age/jeen.agekey
+age-keygen -y ~/.config/sops/age/jeen.agekey   # prints the public key
+# put that public key into the repo-root .sops.yaml (replace the placeholder)
+
+# c. Set github_owner + github_token (PAT, repo scope) in terraform.tfvars
+
+# d. Commit + push the Flux manifests so bootstrap has something to reconcile:
+git add clusters infrastructure apps .sops.yaml && git commit -m "flux manifests" && git push -u origin main
+```
+
 ---
 
 ## Deploy
@@ -76,10 +93,12 @@ apply Talos config (static IPs + VIP, install to disk, **CNI/kube-proxy disabled
 → bootstrap etcd on cp-01 → fetch kubeconfig → **install Cilium via Helm**. Nodes
 stay `NotReady` until Cilium lands, then go `Ready`.
 
-> Cold-run note: the `helm` provider is configured from the kubeconfig produced
-> in the same apply. This normally works in one pass; if it errors that the
-> kubeconfig is unknown, run `terraform apply -target=talos_cluster_kubeconfig.this`
-> once, then `terraform apply` again.
+…then bootstrap **Flux** and have it adopt Cilium (see GitOps below).
+
+> Cold-run note: the `helm`, `flux`, `kubernetes`, and `github` providers are all
+> configured from the kubeconfig produced in the same apply. This normally works
+> in one pass; if it errors that the kubeconfig is unknown, run
+> `terraform apply -target=helm_release.cilium` once, then `terraform apply` again.
 
 ### Save credentials & verify
 ```bash
@@ -96,6 +115,36 @@ kubectl -n kube-system get ds     # no kube-proxy DaemonSet (Cilium replaced it)
 # Confirm eBPF kube-proxy replacement, then open Hubble:
 kubectl -n kube-system exec ds/cilium -- cilium status | grep -i kubeproxy
 kubectl -n kube-system port-forward svc/hubble-ui 12000:80   # http://localhost:12000
+```
+
+---
+
+## GitOps with Flux
+
+Flux is bootstrapped by the `fluxcd/flux` provider (`flux.tf`) and syncs this
+repo's `clusters/jeen` path. Layout (monorepo, outside `terraform/`):
+`clusters/jeen/{infrastructure,apps}.yaml` Kustomizations → `infrastructure/
+controllers` (Cilium) + `infrastructure/configs` → `apps/jeen`. Secrets are
+SOPS-encrypted with age; the private key is applied as the `sops-age` Secret by
+`sops.tf`.
+
+**Cilium is handed off from Terraform to Flux.** Terraform installs Cilium once
+(`cilium.tf`) so the CNI exists before Flux pods schedule; Flux's Cilium
+`HelmRelease` (identical name/version/values) then *adopts* the release. After
+adoption is healthy, complete the one-time handoff so only Flux manages it:
+```bash
+flux get helmrelease -n kube-system cilium     # Ready (adopted)
+# then remove the helm_release "cilium" block from cilium.tf and:
+terraform state rm helm_release.cilium         # NOT terraform destroy
+```
+
+Verify:
+```bash
+flux check
+flux get kustomizations -A      # flux-system, infra-controllers, infra-configs, apps Ready
+flux get sources git -A         # flux-system GitRepository Ready
+# SOPS round-trip: encrypt a test secret, commit, then:
+flux reconcile kustomization apps --with-source
 ```
 
 ---
