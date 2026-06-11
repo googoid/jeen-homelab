@@ -23,3 +23,4 @@ Always use best-practices when doing anything.
 - memory/cluster-topology.md — node inventory, IPs, sizing, VIP, network layout
 - memory/terraform-stack.md — TF layout, provider versions, VBoxManage gotchas, Cilium CNI, deploy flow
 - memory/gitops-flux.md — Flux via Terraform, monorepo layout, Cilium adoption, SOPS/age
+- memory/storage-rook-ceph.md — Rook-Ceph: worker disks, Talos prep, Flux layout, RBD+CephFS

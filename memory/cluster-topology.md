@@ -14,16 +14,19 @@ host-only network** on `10.66.6.0/24`; the Windows host is the gateway+NAT at
 8.8.8.8. Control-plane endpoint = Talos shared **VIP 10.66.6.10**
 (`https://10.66.6.10:6443`).
 
-| Node  | Role | IP | vCPU | RAM | Disk |
-|-------|------|----|------|-----|------|
-| cp-01 | controlplane | 10.66.6.11 | 2 | 4GB | 40GB |
-| cp-02 | controlplane | 10.66.6.12 | 2 | 4GB | 40GB |
-| cp-03 | controlplane | 10.66.6.13 | 2 | 4GB | 40GB |
-| wk-01 | worker | 10.66.6.21 | 4 | 8GB | 100GB |
-| wk-02 | worker | 10.66.6.22 | 4 | 8GB | 100GB |
-| wk-03 | worker | 10.66.6.23 | 4 | 8GB | 100GB |
+| Node  | Role | IP | vCPU | RAM | OS disk | Ceph disks |
+|-------|------|----|------|-----|---------|------------|
+| cp-01 | controlplane | 10.66.6.11 | 1 | 2GB | 20GB | — |
+| cp-02 | controlplane | 10.66.6.12 | 1 | 2GB | 20GB | — |
+| cp-03 | controlplane | 10.66.6.13 | 1 | 2GB | 20GB | — |
+| wk-01 | worker | 10.66.6.21 | 4 | 8GB | 40GB | 2×60GB (sdb,sdc) |
+| wk-02 | worker | 10.66.6.22 | 4 | 8GB | 40GB | 2×60GB (sdb,sdc) |
+| wk-03 | worker | 10.66.6.23 | 4 | 8GB | 40GB | 2×60GB (sdb,sdc) |
 
-VirtualBox VMs use **BIOS firmware**, a single host-only NIC, and an empty SATA
-disk (MACs are auto-assigned, not pinned — the design keys on interface name +
-static IP). cp-01 bootstraps. Inventory in `terraform/locals.tf`.
+VirtualBox VMs use **UEFI firmware** (`efi64`), a single host-only NIC, and SATA
+disks: OS on port 0 (`/dev/sda`, Talos installs here), per-node ISO on port 1.
+**Workers** also get two 60GB raw disks on ports 2/3 (`/dev/sdb`,`/dev/sdc`) for
+**Rook-Ceph OSDs** (6 OSDs, 360GB raw, ~120GB usable @ replica 3 — see
+[[storage-rook-ceph]]). MACs auto-assigned (design keys on interface name + static
+IP). cp-01 bootstraps. Inventory in `terraform/locals.tf` (`ceph_disks` per node).
 See [[infrastructure]], [[deployment-approach]], [[terraform-stack]].

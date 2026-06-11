@@ -1,6 +1,6 @@
 ---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-# Cluster-wide configs (e.g. cert-manager ClusterIssuers, network policies).
-# Empty for now — add resources here as the cluster grows.
-resources: []
+# Cluster-wide configs that depend on the controllers (CRDs/operators) being up.
+resources:
+  - rook-ceph-cluster

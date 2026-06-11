@@ -2,16 +2,15 @@ locals {
   # Canonical node inventory. MACs use the Hyper-V default OUI (00:15:5D); they
   # stay stable across reboots. IPs are assigned statically at first boot via a
   # per-node kernel arg (see isos.tf) and persisted by machine config (talos.tf).
+  # ceph_disks = extra raw disks (GB) attached for Rook-Ceph OSDs. Workers get two
+  # 60 GB disks (→ /dev/sdb, /dev/sdc); control planes get none (see vms.tf).
   nodes = {
-    "cp-01" = { role = "controlplane", ip = "10.66.6.11", vcpu = 1, mem_gb = 2, disk_gb = 20 }
-    "cp-02" = { role = "controlplane", ip = "10.66.6.12", vcpu = 1, mem_gb = 2, disk_gb = 20 }
-    "cp-03" = { role = "controlplane", ip = "10.66.6.13", vcpu = 1, mem_gb = 2, disk_gb = 20 }
-    "wk-01" = { role = "worker", ip = "10.66.6.21", vcpu = 4, mem_gb = 8, disk_gb = 40 }
-    # "wk-02" = { role = "worker", ip = "10.66.6.22", vcpu = 2, mem_gb = 4, disk_gb = 40 }
-    # "wk-03" = { role = "worker", ip = "10.66.6.23", vcpu = 2, mem_gb = 4, disk_gb = 40 }
-    # "wk-04" = { role = "worker", ip = "10.66.6.24", vcpu = 2, mem_gb = 4, disk_gb = 40 }
-    # "wk-05" = { role = "worker", ip = "10.66.6.25", vcpu = 2, mem_gb = 4, disk_gb = 40 }
-    # "wk-06" = { role = "worker", ip = "10.66.6.26", vcpu = 2, mem_gb = 4, disk_gb = 40 }
+    "cp-01" = { role = "controlplane", ip = "10.66.6.11", vcpu = 1, mem_gb = 2, disk_gb = 20, ceph_disks = [] }
+    "cp-02" = { role = "controlplane", ip = "10.66.6.12", vcpu = 1, mem_gb = 2, disk_gb = 20, ceph_disks = [] }
+    "cp-03" = { role = "controlplane", ip = "10.66.6.13", vcpu = 1, mem_gb = 2, disk_gb = 20, ceph_disks = [] }
+    "wk-01" = { role = "worker", ip = "10.66.6.21", vcpu = 4, mem_gb = 8, disk_gb = 40, ceph_disks = [60, 60] }
+    "wk-02" = { role = "worker", ip = "10.66.6.22", vcpu = 4, mem_gb = 8, disk_gb = 40, ceph_disks = [60, 60] }
+    "wk-03" = { role = "worker", ip = "10.66.6.23", vcpu = 4, mem_gb = 8, disk_gb = 40, ceph_disks = [60, 60] }
   }
 
   control_plane_nodes = { for k, v in local.nodes : k => v if v.role == "controlplane" }

@@ -21,6 +21,15 @@ resource "null_resource" "vm" {
     iso      = "${var.iso_dir_host}\\${each.key}.iso"
     adapter  = var.hostonly_adapter
     firmware = "efi64"
+
+    # Extra raw disks for Rook-Ceph OSDs (workers only). 2 ports for the OS disk +
+    # DVD, 4 when ceph disks are present. Each entry is "port|winpath|sizeMB" and
+    # the ceph disks start at SATA port 2 (→ /dev/sdb, /dev/sdc). Empty on CPs.
+    portcount = length(each.value.ceph_disks) > 0 ? 4 : 2
+    ceph_disks = join(" ", [
+      for i, sz in each.value.ceph_disks :
+      "${i + 2}|${var.vm_dir}\\${each.key}-ceph${i + 1}.vdi|${sz * 1024}"
+    ])
   }
 
   # The per-node ISO must be staged on the host before the VM boots.
@@ -43,10 +52,18 @@ resource "null_resource" "vm" {
       [ -f "${self.triggers.vdi}" ] \
         || "$VBM" createhd --filename "${self.triggers.vdi}" --size ${self.triggers.disk_mb} --variant Standard
 
-      "$VBM" storagectl "${self.triggers.name}" --name SATA --add sata --controller IntelAhci --portcount 2 --bootable on 2>/dev/null || true
+      "$VBM" storagectl "${self.triggers.name}" --name SATA --add sata --controller IntelAhci --portcount ${self.triggers.portcount} --bootable on 2>/dev/null || true
 
       "$VBM" storageattach "${self.triggers.name}" --storagectl SATA --port 0 --device 0 --type hdd      --medium "${self.triggers.vdi}"
       "$VBM" storageattach "${self.triggers.name}" --storagectl SATA --port 1 --device 0 --type dvddrive --medium "${self.triggers.iso}"
+
+      # Extra raw disks for Ceph OSDs (workers only; empty list is a no-op). Each
+      # entry is "port|path|sizeMB"; the disk is created if missing then attached.
+      for entry in ${self.triggers.ceph_disks}; do
+        port="$${entry%%|*}"; rest="$${entry#*|}"; path="$${rest%%|*}"; size="$${rest##*|}"
+        [ -f "$path" ] || "$VBM" createhd --filename "$path" --size "$size" --variant Standard
+        "$VBM" storageattach "${self.triggers.name}" --storagectl SATA --port "$port" --device 0 --type hdd --medium "$path"
+      done
 
       "$VBM" startvm "${self.triggers.name}" --type headless
     EOT

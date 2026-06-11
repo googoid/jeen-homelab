@@ -25,7 +25,9 @@ bootstrap + `infrastructure.yaml`+`apps.yaml` Kustomizations) → `infrastructur
 controllers/` (cilium HelmRepository+HelmRelease) + `infrastructure/configs/` →
 `apps/jeen/`. Dependency chain flux-system → infra-controllers → infra-configs →
 apps; every Kustomization has `decryption: {provider: sops, secretRef: {name:
-sops-age}}`.
+sops-age}}`. **Contents:** controllers = cilium + rook-ceph (operator); configs =
+rook-ceph-cluster (CephCluster + StorageClasses); apps = empty. See
+[[storage-rook-ceph]].
 
 **Cilium chicken-and-egg → adoption (key):** Flux pods need a CNI to schedule, so
 Terraform still installs Cilium once via `helm_release.cilium`. Flux's Cilium

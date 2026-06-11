@@ -148,3 +148,34 @@ so it was a clean rewrite.
   `state rm` handoff. Verify: `flux check`, `flux get kustomizations -A` Ready,
   nodes Ready, `flux get hr -n kube-system cilium` Ready (no Cilium pod restart),
   SOPS round-trip decrypts a test secret. Same cold-run `-target` caveat as helm.
+
+---
+
+## Milestone 6 — Rook-Ceph (RBD + CephFS) via Flux (2026-06-11)
+
+**Decisions**
+- Add persistent storage with **Rook-Ceph** (v1.20.0), deployed through the Flux
+  pipeline. Provide **block (RBD)** + **shared filesystem (CephFS)** StorageClasses.
+- **Disks on workers only:** each of the 3 workers gets **two 60 GB raw disks**
+  (→ 6 OSDs, 360 GB raw, ~120 GB usable @ replica 3). Control planes get none.
+- Apply via **full VM rebuild** (disks folded into the VM triggers).
+
+**Delivered**
+- TF: `locals.tf` `ceph_disks` per node (workers `[60,60]`, CPs `[]`); `vms.tf`
+  `portcount`/`ceph_disks` triggers + idempotent createhd/attach loop (SATA ports
+  2/3 → `/dev/sdb`,`/dev/sdc`); `talos.tf` worker `config_patches` (rbd/nbd kernel
+  modules + inotify/aio sysctls).
+- Flux: `infrastructure/controllers/rook-ceph/` (privileged-PSA namespace +
+  HelmRepository + operator HelmRelease, CRDs Create/CreateReplace) wired into the
+  controllers kustomization; `infrastructure/configs/rook-ceph-cluster/`
+  (`rook-ceph-cluster` HelmRelease: 3 mon/2 mgr, dashboard, toolbox, OSDs on
+  wk-0{1,2,3} sdb+sdc, daemons kept off CPs, **`ceph-block`** RBD SC [default] +
+  **`ceph-filesystem`** CephFS SC) wired into the configs kustomization.
+
+**Status / next step**
+- Apply recreates the 6 VMs (workers with sdb/sdc raw) → fresh bootstrap → Cilium →
+  Flux. Commit + push the Rook manifests so Flux reconciles them: controllers
+  (operator) → configs (cluster). Verify: `kubectl -n rook-ceph get pods` (3 mon,
+  6 osd, 2 mgr, 2 mds, toolbox), `ceph status` HEALTH_OK, `kubectl get sc` shows
+  both classes, PVC bind test on each. OSDs take a few minutes (transient
+  HEALTH_WARN); no Ceph data persists across a VM-replacing apply.

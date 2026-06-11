@@ -28,6 +28,27 @@ data "talos_machine_configuration" "worker" {
   machine_type     = "worker"
   machine_secrets  = talos_machine_secrets.this.machine_secrets
   talos_version    = var.talos_version
+
+  # Rook-Ceph runs on workers only. rbd is built into the Talos amd64 kernel, but
+  # loading rbd/nbd explicitly + bumping inotify/aio limits is the recommended
+  # defensive config for Ceph OSD/mon density (harmless if already present).
+  config_patches = [
+    yamlencode({
+      machine = {
+        kernel = {
+          modules = [
+            { name = "rbd" },
+            { name = "nbd" },
+          ]
+        }
+        sysctls = {
+          "fs.inotify.max_user_instances" = "8192"
+          "fs.inotify.max_user_watches"   = "524288"
+          "fs.aio-max-nr"                 = "1048576"
+        }
+      }
+    })
+  ]
 }
 
 locals {
