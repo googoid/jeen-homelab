@@ -59,7 +59,8 @@ resource "null_resource" "vm" {
 
       # Extra raw disks for Ceph OSDs (workers only; empty list is a no-op). Each
       # entry is "port|path|sizeMB"; the disk is created if missing then attached.
-      for entry in ${self.triggers.ceph_disks}; do
+      CEPH_DISKS="${self.triggers.ceph_disks}"
+      [ ! -z "CEPH_DISKS" ] && for entry in $CEPH_DISKS; do
         port="$${entry%%|*}"; rest="$${entry#*|}"; path="$${rest%%|*}"; size="$${rest##*|}"
         [ -f "$path" ] || "$VBM" createhd --filename "$path" --size "$size" --variant Standard
         "$VBM" storageattach "${self.triggers.name}" --storagectl SATA --port "$port" --device 0 --type hdd --medium "$path"
