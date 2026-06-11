@@ -1,4 +1,4 @@
 - [Infrastructure](infrastructure.md) — Talos VMs on VirtualBox, managed from WSL2 via VBoxManage (no WinRM)
-- [Deployment approach](deployment-approach.md) — VMs via VBoxManage local-exec, cluster via talos provider
+- [Deployment approach](deployment-approach.md) — VMs via VBoxManage local-exec, cluster via talos provider, CNI via helm
 - [Cluster topology](cluster-topology.md) — node inventory, IPs, sizing, VIP, network layout
-- [Terraform stack](terraform-stack.md) — TF layout, provider versions, VBoxManage gotchas, deploy flow
+- [Terraform stack](terraform-stack.md) — TF layout, provider versions, VBoxManage gotchas, Cilium CNI, deploy flow

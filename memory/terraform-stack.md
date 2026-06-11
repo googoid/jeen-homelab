@@ -7,13 +7,26 @@ metadata:
 
 Terraform in `terraform/`. Providers (pinned in `.terraform.lock.hcl`):
 - `siderolabs/talos` **v0.11.0** — schematics, machine config, apply, bootstrap, kubeconfig.
+- `hashicorp/helm` **~> 2.17** — installs Cilium (`cilium.tf`), authenticated from
+  `talos_cluster_kubeconfig.this.kubernetes_client_configuration` (no kubeconfig file).
 - `hashicorp/null` (ISO download + VM lifecycle), `hashicorp/time` (reboot delay).
 - **No VM provider:** VirtualBox VMs are created by driving `VBoxManage` via
   `null_resource` + `local-exec` (`vms.tf`). The old `taliesins/hyperv` provider
   and all WinRM config were removed (Milestone 3).
 
-Files: versions/providers/variables/locals/network/isos/vms/talos/outputs.tf +
+Files: versions/providers/variables/locals/network/isos/vms/talos/cilium/outputs.tf +
 `scripts/host-network-setup.ps1`, `terraform.tfvars.example`, `.gitignore`, `README.md`.
+
+**CNI = Cilium (Milestone 4):** controlplane `config_patches` (talos.tf) set
+`cluster.network.cni.name=none` + `cluster.proxy.disabled=true`; `cilium.tf`
+`helm_release` (chart `cilium` `var.cilium_version`=1.19.4, ns kube-system) does
+**full kube-proxy replacement** reaching the API via **KubePrism**
+(`k8sServiceHost=localhost`, `k8sServicePort=7445` — up independent of CNI/VIP).
+Talos-required values: `cgroup.autoMount=false`+`hostRoot=/sys/fs/cgroup`, explicit
+`securityContext.capabilities` (Cilium runs unprivileged). **Hubble** relay+UI on.
+Nodes stay NotReady until the helm_release lands. Cold-run gotcha: helm provider
+reads kubeconfig from a same-apply resource — if it errors, `terraform apply
+-target=talos_cluster_kubeconfig.this` then re-apply.
 
 **Isolated-network bootstrap (key design, unchanged):** host-only adapter has NO
 DHCP, so each node gets its static IP at first boot via a **per-node Image Factory

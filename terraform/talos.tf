@@ -8,6 +8,18 @@ data "talos_machine_configuration" "controlplane" {
   machine_type     = "controlplane"
   machine_secrets  = talos_machine_secrets.this.machine_secrets
   talos_version    = var.talos_version
+
+  # Disable Talos's bundled CNI (flannel) and kube-proxy — Cilium replaces both
+  # (cilium.tf). Nodes stay NotReady until Cilium is installed; kube-proxy is
+  # never deployed. Cluster-level settings, so rendered only on control planes.
+  config_patches = [
+    yamlencode({
+      cluster = {
+        network = { cni = { name = "none" } }
+        proxy   = { disabled = true }
+      }
+    })
+  ]
 }
 
 data "talos_machine_configuration" "worker" {
@@ -76,8 +88,8 @@ resource "talos_machine_configuration_apply" "node" {
     # TODO: this will probably fail if the node has more than one NIC
     yamlencode({
       apiVersion = "v1alpha1"
-      kind = "LinkAliasConfig"
-      name = "eth0"
+      kind       = "LinkAliasConfig"
+      name       = "eth0"
       selector = {
         match = true
       }
@@ -88,34 +100,9 @@ resource "talos_machine_configuration_apply" "node" {
   depends_on = [null_resource.vm]
 }
 
-# # Absorb the post-install reboot: poll each node's Talos API (apid, port 50000)
-# # until it answers again before moving on to bootstrap.
-# resource "null_resource" "wait_for_port" {
-#   for_each = local.nodes
-
-#   depends_on = [talos_machine_configuration_apply.node]
-
-#   triggers = {
-#     node = each.value.ip
-#   }
-
-#   provisioner "local-exec" {
-#     command = <<-EOT
-#       sleep 60
-#       printf "Waiting for Talos API on ${each.value.ip}:50000"
-#       until nc -z -w5 ${each.value.ip} 50000; do
-#         printf '.'
-#         sleep 5
-#       done
-#       echo " up!"
-#     EOT
-#   }
-# }
-
 # Bootstrap etcd on the first control plane (connect directly to its IP; the VIP
 # is not live until the cluster is up).
 resource "talos_machine_bootstrap" "this" {
-  # depends_on = [null_resource.wait_for_port]
   depends_on = [talos_machine_configuration_apply.node]
 
   client_configuration = talos_machine_secrets.this.client_configuration

@@ -15,5 +15,7 @@ in Milestone 3). Cluster layer = the official `siderolabs/talos` provider
 (`talos_machine_secrets`, `talos_machine_configuration`,
 `talos_machine_configuration_apply`, `talos_machine_bootstrap`,
 `talos_cluster_kubeconfig`) to generate configs, apply them, bootstrap etcd, and
-fetch kubeconfig. Prefer Terraform resources over imperative commands. See
-[[infrastructure]], [[terraform-stack]].
+fetch kubeconfig. CNI layer = **Cilium via the `helm` provider** (`cilium.tf`),
+authenticated from the talos kubeconfig output (no file on disk). Prefer
+Terraform resources over imperative commands. See [[infrastructure]],
+[[terraform-stack]].

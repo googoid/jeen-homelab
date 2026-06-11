@@ -62,3 +62,25 @@ resource "null_resource" "vm" {
     EOT
   }
 }
+
+resource "null_resource" "noboot" {
+  depends_on = [talos_machine_bootstrap.this]
+
+  for_each = local.nodes
+
+  triggers = {
+    vbm      = var.vboxmanage
+    name     = each.key
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      VBM="${self.triggers.vbm}"
+
+      "$VBM" showvminfo "${self.triggers.name}" >/dev/null 2>&1 \
+        && "$VBM" storageattach "${self.triggers.name}" --storagectl "SATA" --port 1 --device 0 --type dvddrive --medium emptydrive
+
+    EOT
+  }
+}

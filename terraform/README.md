@@ -72,8 +72,14 @@ terraform init
 terraform apply
 ```
 `apply` will: build + stage 6 per-node ISOs → create + boot 6 VirtualBox VMs →
-apply Talos config (static IPs + VIP, install to disk) → bootstrap etcd on cp-01
-→ fetch kubeconfig.
+apply Talos config (static IPs + VIP, install to disk, **CNI/kube-proxy disabled**)
+→ bootstrap etcd on cp-01 → fetch kubeconfig → **install Cilium via Helm**. Nodes
+stay `NotReady` until Cilium lands, then go `Ready`.
+
+> Cold-run note: the `helm` provider is configured from the kubeconfig produced
+> in the same apply. This normally works in one pass; if it errors that the
+> kubeconfig is unknown, run `terraform apply -target=talos_cluster_kubeconfig.this`
+> once, then `terraform apply` again.
 
 ### Save credentials & verify
 ```bash
@@ -84,7 +90,12 @@ export KUBECONFIG=~/.kube/jeen.yaml
 
 talosctl -n 10.66.6.11 --talosconfig ~/.talos/config health
 kubectl get nodes -o wide      # expect 3 control-plane + 3 worker, Ready
-kubectl get pods -A
+kubectl get pods -n kube-system   # cilium-*, cilium-operator, hubble-relay/ui Running
+kubectl -n kube-system get ds     # no kube-proxy DaemonSet (Cilium replaced it)
+
+# Confirm eBPF kube-proxy replacement, then open Hubble:
+kubectl -n kube-system exec ds/cilium -- cilium status | grep -i kubeproxy
+kubectl -n kube-system port-forward svc/hubble-ui 12000:80   # http://localhost:12000
 ```
 
 ---

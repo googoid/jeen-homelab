@@ -80,3 +80,33 @@ so it was a clean rewrite.
 - `terraform validate` passes. Prerequisites: install VirtualBox 7, run
   `scripts/host-network-setup.ps1`, **verify `ping 10.66.6.1` from WSL2**, then
   `terraform apply`. Watch the guest NIC name (`eth0` vs `enp0s3`) on first boot.
+
+## Milestone 4 — Cilium CNI (eBPF, kube-proxy replacement, Hubble) (2026-06-11)
+
+**Decisions**
+- Replace Talos's default flannel + kube-proxy with **Cilium** (eBPF datapath).
+- Install via the Terraform **`helm` provider** (`~> 2.17`), authenticated from
+  the `talos_cluster_kubeconfig` output — no kubeconfig file on disk.
+- **Full kube-proxy replacement**, reaching the API server through Talos
+  **KubePrism** (`localhost:7445`) rather than the VIP — up independent of CNI,
+  so no bootstrap chicken-and-egg.
+- **Hubble** (relay + UI) enabled. No LoadBalancer/L2 yet.
+- Also switched VMs to **UEFI** (`--firmware efi64`) and forced `eth0` naming via
+  `net.ifnames=0` in the ISO kernel args (consistent `ip=` arg + machine config).
+
+**Delivered**
+- `talos.tf`: controlplane `config_patches` set `cluster.network.cni.name=none`
+  and `cluster.proxy.disabled=true`.
+- `cilium.tf` (new): `helm_release.cilium` with Talos values (cgroup hostRoot,
+  unprivileged capability sets), `kubeProxyReplacement=true`, KubePrism endpoint,
+  Hubble relay+UI; `depends_on` the kubeconfig.
+- `providers.tf`/`versions.tf`: helm provider added/configured. `variables.tf`:
+  `cilium_version` (1.19.4) + `cilium_namespace` (kube-system).
+
+**Status / next step**
+- `terraform validate` passes. Apply rebuilds VMs (UEFI) → fresh bootstrap with
+  `cni: none` → Cilium via Helm. Verify: cilium/operator/hubble pods Running,
+  nodes Ready, no kube-proxy DaemonSet, `cilium status` shows
+  `KubeProxyReplacement: True`. On a cold run, if the helm provider errors on an
+  unknown kubeconfig, `terraform apply -target=talos_cluster_kubeconfig.this`
+  then re-apply.

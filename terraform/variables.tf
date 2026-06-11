@@ -93,3 +93,20 @@ variable "node_interface" {
   type        = string
   default     = "eth0"
 }
+
+# ---------------------------------------------------------------------------
+# Cilium CNI (installed via the helm provider; see cilium.tf)
+# Talos's default CNI + kube-proxy are disabled (talos.tf); Cilium replaces both
+# with its eBPF datapath, reaching the API server through Talos KubePrism.
+# ---------------------------------------------------------------------------
+variable "cilium_version" {
+  description = "Cilium Helm chart version (https://helm.cilium.io)."
+  type        = string
+  default     = "1.19.4"
+}
+
+variable "cilium_namespace" {
+  description = "Namespace Cilium is installed into (kube-system is the Talos-recommended CNI namespace)."
+  type        = string
+  default     = "kube-system"
+}

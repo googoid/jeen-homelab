@@ -13,8 +13,10 @@ Make sure to document a summary after every achieved milestone during our journe
 
 Make sure to use as little tokens as possible. I'm on a very low budget :)
 
+Use short commit messages. Never use Co-Authored or anything like that.
+
 ## Memory files (see memory/MEMORY.md for the full index)
 - memory/infrastructure.md — VirtualBox host, Talos, WSL2 control machine, VBoxManage (no WinRM)
-- memory/deployment-approach.md — VMs via VBoxManage local-exec, cluster via talos provider
+- memory/deployment-approach.md — VMs via VBoxManage local-exec, cluster via talos provider, CNI via helm
 - memory/cluster-topology.md — node inventory, IPs, sizing, VIP, network layout
-- memory/terraform-stack.md — TF layout, provider versions, VBoxManage gotchas, deploy flow
+- memory/terraform-stack.md — TF layout, provider versions, VBoxManage gotchas, Cilium CNI, deploy flow
