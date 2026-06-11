@@ -6,7 +6,14 @@ resource "talos_image_factory_schematic" "node" {
 
   schematic = yamlencode({
     customization = {
-      extraKernelArgs = [local.node_kernel_ip[each.key]]
+      # net.ifnames=0 disables predictable interface naming so the single NIC is
+      # always "eth0" — keeps the ip= arg below and the machine-config interface
+      # (talos.tf, both via var.node_interface) consistent regardless of the
+      # PCI slot VirtualBox assigns. Verify once with `talosctl get links`.
+      extraKernelArgs = [
+        "net.ifnames=0",
+        local.node_kernel_ip[each.key],
+      ]
     }
   })
 }
@@ -31,6 +38,13 @@ resource "null_resource" "iso" {
   }
 
   provisioner "local-exec" {
-    command = "mkdir -p '${var.iso_dir_wsl}' && curl -fL --retry 3 -o '${self.triggers.dest}' '${self.triggers.url}'"
+    # Download iso when it doesn't exist, useful during development to not download iso every time
+    command = "[ -f '${self.triggers.dest}' ] || (mkdir -p '${var.iso_dir_wsl}' && curl -fL --retry 3 -o '${self.triggers.dest}' '${self.triggers.url}')"
   }
+
+  # # Delete iso when destroying the infrastructure
+  # provisioner "local-exec" {
+  #   when    = destroy
+  #   command = "rm -f '${self.triggers.dest}'"
+  # }
 }

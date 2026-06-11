@@ -1,7 +1,8 @@
-# jeen — Talos HA cluster on Hyper-V (Terraform)
+# jeen — Talos HA cluster on VirtualBox (Terraform)
 
-3 control planes + 3 workers as Hyper-V Gen2 VMs on an **isolated** `10.66.6.0/24`
-network, deployed from WSL2. Talos **v1.13.4**.
+3 control planes + 3 workers as VirtualBox VMs on an **isolated** `10.66.6.0/24`
+network, deployed from WSL2 by driving `VBoxManage` on the Windows host (no
+WinRM). Talos **v1.13.4**.
 
 | Node  | Role          | IP          | vCPU | RAM  | Disk   |
 |-------|---------------|-------------|------|------|--------|
@@ -13,23 +14,32 @@ network, deployed from WSL2. Talos **v1.13.4**.
 | wk-02 | worker        | 10.66.6.22  | 4    | 8 GB | 100 GB |
 | wk-03 | worker        | 10.66.6.23  | 4    | 8 GB | 100 GB |
 
-Gateway/DNS-route `10.66.6.1` (the Windows host vNIC, which NATs to the internet).
-Node DNS resolvers: `1.1.1.1` / `8.8.8.8`.
+Gateway/NAT `10.66.6.1` (the Windows host's host-only adapter, which NATs to the
+internet). Node DNS resolvers: `1.1.1.1` / `8.8.8.8`.
 
 ## How it works
 
-The host LAN is `192.168.1.0/24`; the cluster lives on an **isolated Internal
-Hyper-V switch** (`10.66.6.0/24`) with the host as gateway + NAT. Because an
-Internal switch has **no DHCP**, each node gets its static IP at first boot from a
+The host LAN is `192.168.1.0/24`; the cluster lives on an **isolated VirtualBox
+host-only network** (`10.66.6.0/24`) with the host as gateway + NAT. Because the
+adapter's DHCP is disabled, each node gets its static IP at first boot from a
 **per-node Talos ISO** built by Image Factory with an `ip=` kernel argument.
-Terraform builds those ISOs, stages them to the host via `/mnt/c`, creates the
-VMs, applies Talos config, bootstraps etcd, and fetches the kubeconfig.
+Terraform builds those ISOs, then drives `VBoxManage` to create each VM (empty
+SATA disk + the node's ISO), boots it, applies Talos config, bootstraps etcd, and
+fetches the kubeconfig. The empty disk has no boot sector, so the BIOS falls
+through to the ISO; after Talos installs to `/dev/sda`, the disk boots first.
 
 ---
 
 ## Prerequisites (one-time)
 
-### 1. WSL2 mirrored networking
+### 1. Install VirtualBox 7 on the Windows host
+VirtualBox 7 coexists with WSL2 via the Windows Hypervisor Platform. Confirm
+`VBoxManage` is reachable from WSL2:
+```bash
+"/mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe" --version
+```
+
+### 2. WSL2 mirrored networking
 Add to `C:\Users\<you>\.wslconfig`, then `wsl --shutdown`:
 ```ini
 [wsl2]
@@ -37,37 +47,33 @@ networkingMode=mirrored
 ```
 `hostname -I` should show the host's LAN IP (e.g. `192.168.1.x`).
 
-### 2. WinRM on the host (run as Administrator)
+### 3. Create the isolated cluster network (run as Administrator on Windows)
 ```powershell
-Enable-PSRemoting -Force
-Set-Item WSMan:\localhost\Service\Auth\Negotiate $true
-Set-Item WSMan:\localhost\Service\AllowUnencrypted $true   # HTTP; use HTTPS to harden
-Set-Item WSMan:\localhost\Shell\MaxMemoryPerShellMB 2048
-New-NetFirewallRule -DisplayName "WinRM HTTP" -Direction Inbound -LocalPort 5985 -Protocol TCP -Action Allow
-```
-
-### 3. Create the isolated cluster network (run as Administrator)
-```powershell
-# from this repo:
 powershell -ExecutionPolicy Bypass -File terraform\scripts\host-network-setup.ps1
 ```
-Then **verify from WSL2** that the isolated network is reachable:
+This allowlists `10.66.6.0/24` for host-only use (VirtualBox 7 blocks it by
+default), creates a **dedicated** host-only adapter (`VirtualBox Host-Only
+Ethernet Adapter #2`) at `10.66.6.1/24` with DHCP off (leaving the default
+`192.168.56.1` adapter untouched), and adds a NAT for internet. That adapter name
+is hard-coded in both the script (`$Adapter`) and Terraform
+(`var.hostonly_adapter`) — keep them in sync. Then **verify from WSL2**:
 ```bash
 ping -c1 10.66.6.1
 ```
-If this fails, mirrored mode is not exposing the Internal switch to WSL2 and the
-Talos provider won't be able to configure the nodes — stop and resolve this first.
+If this fails, mirrored mode is not exposing the host-only adapter to WSL2 and the
+Talos provider won't be able to configure the nodes — resolve this first.
 
 ---
 
 ## Deploy
 ```bash
-cp terraform.tfvars.example terraform.tfvars   # edit WinRM host/user/password
+cp terraform.tfvars.example terraform.tfvars   # defaults are usually fine
 terraform init
 terraform apply
 ```
-`apply` will: build + stage 6 per-node ISOs → create 6 VMs → apply Talos config
-(static IPs + VIP, install to disk) → bootstrap etcd on cp-01 → fetch kubeconfig.
+`apply` will: build + stage 6 per-node ISOs → create + boot 6 VirtualBox VMs →
+apply Talos config (static IPs + VIP, install to disk) → bootstrap etcd on cp-01
+→ fetch kubeconfig.
 
 ### Save credentials & verify
 ```bash
@@ -84,12 +90,21 @@ kubectl get pods -A
 ---
 
 ## Operational notes
+- **Tear down the host network** (after `terraform destroy` removes the VMs):
+  `powershell -ExecutionPolicy Bypass -File terraform\scripts\host-network-teardown.ps1`
+  as Administrator. It finds the adapter by IP and removes it, its DHCP server,
+  the NAT, and the allowlist.
 - **WSL2 ↔ isolated net** is the critical dependency (step 3 verify). The Talos
   provider runs in WSL2 and must reach `10.66.6.x`.
-- **Boot order:** Gen2 VMs boot the ISO because the OS disk starts empty. If a VM
-  hangs at firmware, set the DVD first once:
-  `Set-VMFirmware -VMName cp-01 -FirstBootDevice (Get-VMDvdDrive -VMName cp-01)`.
-- **Interface name** assumed `eth0`; verify with `talosctl -n <ip> get links` and
-  adjust `node_interface` if different (it also feeds the boot `ip=` arg).
-- **Internet for nodes** depends on the host NAT (step 3). If image pulls fail,
-  check `Get-NetNat` and that the host itself has internet.
+- **Interface name** is assumed `eth0`; VirtualBox + Talos metal may expose
+  `enp0s3` instead. Verify with `talosctl -n <ip> get links` and adjust
+  `node_interface` if different (it also feeds the boot `ip=` arg).
+- **Boot order** is `disk` then `dvd`; if a VM hangs at the BIOS, confirm the ISO
+  is attached on SATA port 1 (`VBoxManage showvminfo <node>`).
+- **Internet for nodes** depends on the host NAT (step 3). `New-NetNat` only does
+  address translation — Windows also needs **IP forwarding enabled** on both the
+  host-only adapter and the upstream LAN NIC, or nodes reach `10.66.6.1` but have
+  no internet. `host-network-setup.ps1` enables this (step 6). If image pulls
+  fail, confirm `Get-NetNat` shows `jeen-nat` Active and
+  `Get-NetIPInterface -AddressFamily IPv4 | ? Forwarding -eq Enabled` lists both
+  interfaces.

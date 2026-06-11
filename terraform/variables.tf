@@ -1,53 +1,20 @@
 # ---------------------------------------------------------------------------
-# WinRM connection to the Hyper-V (Windows) host
+# VirtualBox control (VBoxManage on the Windows host, invoked from WSL2)
+# Terraform drives VBoxManage.exe over the /mnt/c bridge — no WinRM involved.
 # ---------------------------------------------------------------------------
-variable "winrm_host" {
-  description = "Hostname or IP of the Windows Hyper-V host reachable from WSL2 (its LAN IP, e.g. 192.168.1.x)."
+variable "vboxmanage" {
+  description = "Path to the VBoxManage binary as seen from where Terraform runs (WSL2 sees the Windows exe under /mnt/c)."
   type        = string
-}
-
-variable "winrm_user" {
-  description = "Windows username for WinRM (local admin or domain account)."
-  type        = string
-}
-
-variable "winrm_password" {
-  description = "Password for the WinRM user."
-  type        = string
-  sensitive   = true
-}
-
-variable "winrm_port" {
-  description = "WinRM port (5985 for HTTP, 5986 for HTTPS)."
-  type        = number
-  default     = 5985
-}
-
-variable "winrm_https" {
-  description = "Use HTTPS for WinRM."
-  type        = bool
-  default     = false
-}
-
-variable "winrm_insecure" {
-  description = "Skip TLS verification (only relevant when winrm_https = true)."
-  type        = bool
-  default     = true
-}
-
-variable "winrm_use_ntlm" {
-  description = "Use NTLM authentication for WinRM."
-  type        = bool
-  default     = true
+  default     = "/mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe"
 }
 
 # ---------------------------------------------------------------------------
-# Host paths
-# ISOs are staged from WSL2 (iso_dir_wsl) which maps to the Windows path
-# (iso_dir_host) that Hyper-V reads from. Default C:\talos == /mnt/c/talos.
+# Host paths (Windows-side, as VBoxManage expects them)
+# ISOs are downloaded from WSL2 to iso_dir_wsl, which maps to the Windows path
+# iso_dir_host that VBoxManage attaches. Default C:\talos == /mnt/c/talos.
 # ---------------------------------------------------------------------------
 variable "iso_dir_host" {
-  description = "Windows path where per-node Talos ISOs live (read by Hyper-V)."
+  description = "Windows path where per-node Talos ISOs live (attached by VBoxManage)."
   type        = string
   default     = "C:\\talos"
 }
@@ -58,22 +25,22 @@ variable "iso_dir_wsl" {
   default     = "/mnt/c/talos"
 }
 
-variable "vhd_dir" {
-  description = "Directory on the Windows host where node OS disks (.vhdx) are created."
+variable "vm_dir" {
+  description = "Windows directory where node OS disks (.vdi) are created by VBoxManage."
   type        = string
-  default     = "C:\\Hyper-V\\jeen"
+  default     = "C:\\VBox\\jeen"
 }
 
 # ---------------------------------------------------------------------------
-# Isolated cluster network (Internal switch + host NAT)
-# The switch, the host gateway vNIC (10.66.6.1), and NAT are created by the
-# one-time host script scripts/host-network-setup.ps1 (the Hyper-V provider
-# cannot manage vNIC IPs or NAT). Terraform references the switch by name.
+# Isolated cluster network (VirtualBox host-only adapter + Windows NAT)
+# The host-only adapter IP (10.66.6.1), its DHCP-off state, and the NAT are set
+# by the one-time host script scripts/host-network-setup.ps1. VMs attach to the
+# adapter by name (see vms.tf).
 # ---------------------------------------------------------------------------
-variable "switch_name" {
-  description = "Name of the Internal Hyper-V virtual switch the nodes attach to."
+variable "hostonly_adapter" {
+  description = "Name of the dedicated VirtualBox host-only adapter the nodes attach to (as shown by `VBoxManage list hostonlyifs`)."
   type        = string
-  default     = "jeen-internal"
+  default     = "VirtualBox Host-Only Ethernet Adapter #2"
 }
 
 variable "subnet_cidr_suffix" {
@@ -116,13 +83,13 @@ variable "talos_version" {
 }
 
 variable "install_disk" {
-  description = "Disk device Talos installs to (Gen2 SCSI disk appears as /dev/sda)."
+  description = "Disk device Talos installs to (the VirtualBox SATA/AHCI disk appears as /dev/sda)."
   type        = string
   default     = "/dev/sda"
 }
 
 variable "node_interface" {
-  description = "Guest network interface name (verify with `talosctl get links`)."
+  description = "Guest network interface name. Forced to eth0 by net.ifnames=0 in the ISO kernel args (isos.tf); verify once with `talosctl get links`."
   type        = string
   default     = "eth0"
 }

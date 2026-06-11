@@ -25,12 +25,14 @@ locals {
   node_patches = {
     for k, v in local.nodes : k => yamlencode({
       machine = {
+        # VirtualBox exposes an AHCI (SATA) disk and an Intel 82540EM (e1000) NIC,
+        # both already supported by the Talos metal image — no extra kernel
+        # modules needed (unlike the Hyper-V hv_* paravirtual drivers).
         install = {
           disk  = var.install_disk
           image = local.installer_image
         }
         network = {
-          hostname    = k
           nameservers = var.nameservers
           interfaces = [
             merge(
@@ -63,21 +65,58 @@ resource "talos_machine_configuration_apply" "node" {
   node     = each.value.ip
   endpoint = each.value.ip
 
-  config_patches = [local.node_patches[each.key]]
+  config_patches = [
+    yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "HostnameConfig"
+      hostname   = "${each.key}"
+      auto       = "off"
+    }),
+    # This makes sure the network interface is eth0
+    # TODO: this will probably fail if the node has more than one NIC
+    yamlencode({
+      apiVersion = "v1alpha1"
+      kind = "LinkAliasConfig"
+      name = "eth0"
+      selector = {
+        match = true
+      }
+    }),
+    local.node_patches[each.key]
+  ]
 
-  depends_on = [hyperv_machine_instance.node]
+  depends_on = [null_resource.vm]
 }
 
-# Absorb the post-install reboot before bootstrapping.
-resource "time_sleep" "wait_for_reboot" {
-  depends_on      = [talos_machine_configuration_apply.node]
-  create_duration = "150s"
-}
+# # Absorb the post-install reboot: poll each node's Talos API (apid, port 50000)
+# # until it answers again before moving on to bootstrap.
+# resource "null_resource" "wait_for_port" {
+#   for_each = local.nodes
+
+#   depends_on = [talos_machine_configuration_apply.node]
+
+#   triggers = {
+#     node = each.value.ip
+#   }
+
+#   provisioner "local-exec" {
+#     command = <<-EOT
+#       sleep 60
+#       printf "Waiting for Talos API on ${each.value.ip}:50000"
+#       until nc -z -w5 ${each.value.ip} 50000; do
+#         printf '.'
+#         sleep 5
+#       done
+#       echo " up!"
+#     EOT
+#   }
+# }
 
 # Bootstrap etcd on the first control plane (connect directly to its IP; the VIP
 # is not live until the cluster is up).
 resource "talos_machine_bootstrap" "this" {
-  depends_on = [time_sleep.wait_for_reboot]
+  # depends_on = [null_resource.wait_for_port]
+  depends_on = [talos_machine_configuration_apply.node]
 
   client_configuration = talos_machine_secrets.this.client_configuration
   node                 = local.nodes[local.first_cp_name].ip

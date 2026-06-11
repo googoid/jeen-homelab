@@ -48,3 +48,35 @@ on `10.66.6.0/24` via an **Internal Hyper-V switch** with the host as gateway+NA
   `scripts/host-network-setup.ps1`, then **verify `ping 10.66.6.1` from WSL2**
   (critical — the Talos provider runs in WSL2 and must reach the isolated net).
   Then fill `terraform.tfvars` and `terraform apply`.
+
+## Milestone 3 — Migrate from Hyper-V to VirtualBox (2026-06-11)
+
+Replaced the Hyper-V VM layer with **VirtualBox**, driven by `VBoxManage` through
+Terraform `null_resource` + `local-exec`. Motivation: remove the WinRM +
+`taliesins/hyperv` provider friction (not Hyper-V itself). Nothing was deployed,
+so it was a clean rewrite.
+
+**Decisions**
+- Dropped the `hyperv` provider entirely; no VM provider — Terraform invokes
+  `VBoxManage.exe` on the Windows host from WSL2 over `/mnt/c` (no WinRM).
+- Vagrant rejected: Talos has no SSH/WinRM communicator and no boxes, so Vagrant
+  would be an awkward VM-creator that still needs the talos provider anyway.
+- The proven core is unchanged: per-node Image Factory ISO with an `ip=` kernel
+  arg for static IPs on a DHCP-less net; talos provider for config/bootstrap.
+- VMs are BIOS firmware, single host-only NIC (Intel 82540EM/e1000), empty SATA
+  disk + node ISO, boot order `disk` then `dvd` (empty disk falls through to ISO).
+
+**Delivered**
+- `vms.tf` rewritten as a guarded, idempotent `null_resource.vm` per node
+  (create + destroy provisioners). `talos.tf` dropped the Hyper-V `hv_*` kernel
+  modules. `providers.tf`/`versions.tf` dropped hyperv/WinRM. `variables.tf` swaps
+  WinRM vars for `vboxmanage` / `vm_dir` / `hostonly_adapter`.
+- `scripts/host-network-setup.ps1` rewritten: allowlist `10.66.6.0/24` in
+  VirtualBox `networks.conf` (VBox 7 blocks it), host-only adapter at
+  `10.66.6.1/24` with DHCP off, Windows NAT for internet.
+- README/tfvars updated for the WinRM-free VirtualBox flow.
+
+**Status / next step**
+- `terraform validate` passes. Prerequisites: install VirtualBox 7, run
+  `scripts/host-network-setup.ps1`, **verify `ping 10.66.6.1` from WSL2**, then
+  `terraform apply`. Watch the guest NIC name (`eth0` vs `enp0s3`) on first boot.
