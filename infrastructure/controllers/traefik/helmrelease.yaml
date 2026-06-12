@@ -1,7 +1,7 @@
 # Traefik ingress controller. Exposed via a Cilium LoadBalancer Service pinned to
-# 10.66.6.200 (pool/policy in infrastructure/configs/cilium-lb). The dashboard is
-# served through the chart's built-in IngressRoute at http://traefik.jeen.local
-# (point /etc/hosts at the LB IP). Internal network only — no auth yet.
+# 10.66.6.200 (pool/policy in infrastructure/configs/cilium-lb). Dashboard route
+# lives with the others in infrastructure/configs/dashboard-routes. Internal
+# network only — no auth yet.
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -37,8 +37,8 @@ spec:
       websecure:
         port: 443
     ingressRoute:
+      # The dashboard IngressRoute is defined alongside the others in
+      # infrastructure/configs/dashboard-routes (routes to api@internal). The
+      # dashboard/API itself stays enabled (chart default api.dashboard=true).
       dashboard:
-        enabled: true
-        matchRule: "Host(`traefik.jeen.local`)"
-        entryPoints:
-          - web
+        enabled: false

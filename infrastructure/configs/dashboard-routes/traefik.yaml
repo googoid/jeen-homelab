@@ -1,0 +1,18 @@
+# Traefik dashboard via Traefik itself at http://traefik.jeen.local. Routes to the
+# internal API handler (api@internal); chart's built-in dashboard IngressRoute is
+# disabled in the HelmRelease so this is the single source of truth.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard
+  namespace: traefik
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`traefik.jeen.local`)
+      kind: Rule
+      services:
+        - name: api@internal
+          kind: TraefikService
