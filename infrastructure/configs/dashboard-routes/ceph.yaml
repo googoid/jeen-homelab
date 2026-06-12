@@ -1,0 +1,18 @@
+# Ceph mgr dashboard via Traefik at http://ceph.jeen.local. Dashboard runs with
+# ssl:false (see rook-ceph-cluster helmrelease), so the rook-ceph-mgr-dashboard
+# Service serves HTTP on port 7000. IngressRoute sits in rook-ceph alongside it.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ceph-dashboard
+  namespace: rook-ceph
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`ceph.jeen.local`)
+      kind: Rule
+      services:
+        - name: rook-ceph-mgr-dashboard
+          port: 7000

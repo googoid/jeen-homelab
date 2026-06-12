@@ -25,9 +25,14 @@ raised `k8sClientRateLimit` (20/40; default 5/10 too low). Added to **both**
 is **not yet handed off** to Flux — values must match or the two fight. See the
 adoption/handoff note in [[gitops-flux]].
 
-**Dashboard:** chart's built-in IngressRoute, `Host(\`traefik.jeen.local\`)` on the
-`web` entrypoint, internal-only, **no auth yet**. Add `10.66.6.200 traefik.jeen.local`
-to hosts to reach it.
+**Dashboards (all on `web`, internal-only, no auth yet):**
+- Traefik: chart's built-in IngressRoute, `Host(\`traefik.jeen.local\`)`.
+- Hubble + Ceph: IngressRoutes in `infrastructure/configs/dashboard-routes/`
+  (`traefik.io/v1alpha1`). Each lives in the **target service's namespace**
+  (Traefik v3 requires same-ns service refs by default): `hubble.jeen.local` →
+  `hubble-ui:80` in kube-system; `ceph.jeen.local` → `rook-ceph-mgr-dashboard:7000`
+  in rook-ceph (HTTP because ceph dashboard `ssl:false`).
+All resolve to the Traefik VIP — point each host at `10.66.6.200` in your hosts file.
 
 **Verify:** `kubectl -n traefik get svc traefik` → EXTERNAL-IP 10.66.6.200; svc IP
 ARP-reachable from the Windows host. CRD apiVersions are version-specific to Cilium

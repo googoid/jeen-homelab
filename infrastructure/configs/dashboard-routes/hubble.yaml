@@ -1,0 +1,17 @@
+# Hubble UI exposed via Traefik at http://hubble.jeen.local. The hubble-ui Service
+# lives in kube-system (Cilium chart), same namespace as this IngressRoute.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: hubble-ui
+  namespace: kube-system
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`hubble.jeen.local`)
+      kind: Rule
+      services:
+        - name: hubble-ui
+          port: 80
