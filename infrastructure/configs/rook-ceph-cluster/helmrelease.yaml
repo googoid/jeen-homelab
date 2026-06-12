@@ -77,13 +77,13 @@ spec:
       resources:
         mgr:
           requests: { cpu: 100m, memory: 256Mi }
-          limits: { memory: 1Gi }
+          limits: { memory: 512Mi }
         mon:
           requests: { cpu: 100m, memory: 256Mi }
           limits: { memory: 512Mi }
         osd:
           requests: { cpu: 250m, memory: 512Mi }
-          limits: { memory: 2Gi }
+          limits: { memory: 1Gi }
 
     cephBlockPools:
       - name: ceph-blockpool
