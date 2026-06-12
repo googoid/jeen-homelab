@@ -4,3 +4,4 @@ kind: Kustomization
 # Cluster-wide configs that depend on the controllers (CRDs/operators) being up.
 resources:
  - rook-ceph-cluster
+ - cilium-lb

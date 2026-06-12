@@ -49,6 +49,16 @@ resource "helm_release" "cilium" {
       relay = { enabled = true }
       ui    = { enabled = true }
     }
+
+    # L2 announcements + LB IPAM so Service type=LoadBalancer gets a VIP from the
+    # 10.66.6.0/24 host-only net (no cloud LB). Pool + policy live in Flux
+    # (infrastructure/configs/cilium-lb). L2 raises API usage, so the default
+    # client rate limit (5/10) is bumped. Keep in sync with the Flux HelmRelease.
+    l2announcements = { enabled = true }
+    k8sClientRateLimit = {
+      qps   = 20
+      burst = 40
+    }
   })]
 
   depends_on = [talos_cluster_kubeconfig.this]

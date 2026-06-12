@@ -1,0 +1,10 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: jeen-pool
+spec:
+  blocks:
+    # Reserved slice of the host-only net; node IPs are .10-.23.
+    - start: "10.66.6.200"
+      stop: "10.66.6.250"

@@ -1,0 +1,14 @@
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: jeen-l2
+spec:
+  # Announce LoadBalancer IPs only (not node external IPs). Restrict ARP replies
+  # to the single host-only NIC so announcements don't leak onto other links.
+  loadBalancerIPs: true
+  interfaces:
+    - "^eth[0-9]+"
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux

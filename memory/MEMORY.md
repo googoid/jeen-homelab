@@ -4,3 +4,4 @@
 - [Terraform stack](terraform-stack.md) — TF layout, provider versions, VBoxManage gotchas, Cilium CNI, deploy flow
 - [GitOps / Flux](gitops-flux.md) — Flux via Terraform, monorepo layout, Cilium adoption, SOPS/age
 - [Storage / Rook-Ceph](storage-rook-ceph.md) — worker disks, Talos prep, Flux layout, RBD+CephFS StorageClasses
+- [Ingress / Traefik](ingress-traefik.md) — Traefik via Flux, Cilium LB-IPAM/L2, VIP pool, dashboard

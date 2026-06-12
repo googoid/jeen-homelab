@@ -179,3 +179,36 @@ so it was a clean rewrite.
   6 osd, 2 mgr, 2 mds, toolbox), `ceph status` HEALTH_OK, `kubectl get sc` shows
   both classes, PVC bind test on each. OSDs take a few minutes (transient
   HEALTH_WARN); no Ceph data persists across a VM-replacing apply.
+
+---
+
+## Milestone 7 — Traefik ingress + Cilium LB-IPAM/L2 (2026-06-12)
+
+**Decisions**
+- Add **Traefik** (chart 40.3.0, Traefik v3.7.4) as the ingress controller via the
+  Flux pipeline.
+- Expose it with a **Service type=LoadBalancer** backed by **Cilium LB-IPAM + L2
+  announcements** (no cloud LB on the isolated 10.66.6.0/24 host-only net). VIP
+  pool **10.66.6.200-250**; Traefik pinned to **10.66.6.200**.
+- Enable the **dashboard** via the chart's built-in IngressRoute at
+  `http://traefik.jeen.local` (web entrypoint, internal only, no auth yet).
+
+**Delivered**
+- Cilium: `l2announcements.enabled=true` + `k8sClientRateLimit` 20/40 (default 5/10
+  too low for L2) added to **both** `terraform/cilium.tf` and the Flux
+  `infrastructure/controllers/cilium/helmrelease.yaml` (kept in parity — helm_release
+  not yet handed off to Flux).
+- Flux controllers: `infrastructure/controllers/traefik/` (namespace + HelmRepository
+  + HelmRelease, LB service pinned via `lbipam.cilium.io/ips`, dashboard IngressRoute)
+  wired into the controllers kustomization.
+- Flux configs: `infrastructure/configs/cilium-lb/` (`CiliumLoadBalancerIPPool`
+  cilium.io/v2 `jeen-pool` .200-.250 + `CiliumL2AnnouncementPolicy` cilium.io/v2alpha1
+  `jeen-l2`, loadBalancerIPs only, iface `^eth[0-9]+`) wired into the configs
+  kustomization.
+
+**Status / next step**
+- Cilium values changed → next `terraform apply` (or Flux reconcile) upgrades Cilium
+  (pod churn expected). Commit + push so Flux reconciles: controllers (cilium upgrade
+  + traefik) → configs (LB pool/policy). Verify: `kubectl -n traefik get svc traefik`
+  shows EXTERNAL-IP 10.66.6.200; `cilium status`; ARP-reachable from the Windows host;
+  add `10.66.6.200 traefik.jeen.local` to hosts and open the dashboard.

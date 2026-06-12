@@ -59,3 +59,12 @@ spec:
         enabled: true
       ui:
         enabled: true
+    # L2 announcements + LB IPAM for Service type=LoadBalancer on the isolated
+    # 10.66.6.0/24 net. Pool + policy in infrastructure/configs/cilium-lb. Bump
+    # the client rate limit (default 5/10 too low for L2). Keep in sync with
+    # terraform/cilium.tf until the helm_release is handed off to Flux.
+    l2announcements:
+      enabled: true
+    k8sClientRateLimit:
+      qps: 20
+      burst: 40
