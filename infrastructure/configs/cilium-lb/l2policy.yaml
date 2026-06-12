@@ -5,10 +5,11 @@ metadata:
   name: jeen-l2
 spec:
   # Announce LoadBalancer IPs only (not node external IPs). Restrict ARP replies
-  # to the single host-only NIC so announcements don't leak onto other links.
+  # to the single host-only NIC. Cilium keys on the primary kernel name
+  # (enp0s3); "eth0" is only a Talos altname, so match both prefixes.
   loadBalancerIPs: true
   interfaces:
-    - "^eth[0-9]+"
+    - "^(eth|enp)[0-9].*"
   nodeSelector:
     matchLabels:
       kubernetes.io/os: linux
